@@ -68,7 +68,7 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
-            nav, #loginScreen, #archiveFilterPanel, .flex.flex-wrap.items-center, #formColumn, th:last-child, td:last-child, button {
+            nav, #loginScreen, #archiveFilterPanel, #adminFilterPanel, .flex.flex-wrap.items-center, #formColumn, th:last-child, td:last-child, button {
                 display: none !important;
             }
             #workspaceGrid {
@@ -172,7 +172,7 @@
             </div>
         </div>
 
-        <!-- Archive Filter Bar -->
+        <!-- User/Dhaka Archive Filter Bar -->
         <div id="archiveFilterPanel" class="hidden bg-gray-100 p-4 rounded-xl mb-6 border border-gray-200 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Global Search</label>
@@ -185,6 +185,17 @@
             <div>
                 <label class="block text-xs font-bold text-gray-600 uppercase mb-1">To Date</label>
                 <input type="date" id="filterToDate" onchange="fetchAndRenderTable()" onclick="this.showPicker()" class="w-full p-2 bg-white border border-gray-300 rounded-lg text-sm outline-none focus:ring-1 focus:ring-slate-800 cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Admin Global Search Bar -->
+        <div id="adminFilterPanel" class="hidden bg-slate-100 p-4 rounded-xl mb-6 border border-slate-200">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1 tracking-wider">Admin Global Real-time Search Filter</label>
+                <div class="relative">
+                    <input type="text" id="adminSearchQuery" oninput="this.value = this.value.toUpperCase(); fetchAndRenderTable();" placeholder="Filter through all records by Job Number, Importer Company Name, or Description contents..." class="w-full p-3 bg-white border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-slate-800 uppercase tracking-wide">
+                    <span class="absolute right-3 top-3.5 text-gray-400 text-xs font-bold uppercase">Live Filter</span>
+                </div>
             </div>
         </div>
 
@@ -221,6 +232,14 @@
                             <textarea id="docDesc" rows="3" required oninput="this.value = this.value.toUpperCase()" class="w-full p-2 border border-gray-300 rounded-md focus:ring-1 focus:ring-slate-800 outline-none text-sm resize-none uppercase"></textarea>
                         </div>
                         
+                        <!-- Checkbox Panel for Status Tracking Fields -->
+                        <div id="originalCheckboxContainer" class="flex items-center p-1">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="docArrived" class="w-4 h-4 rounded border-gray-300 text-slate-900 focus:ring-slate-800 accent-slate-900 cursor-pointer">
+                                <label for="docArrived" class="text-xs font-bold text-slate-700 uppercase tracking-wider cursor-pointer select-none">Shipment Arrived</label>
+                            </div>
+                        </div>
+                        
                         <div class="pt-2 flex space-x-2">
                             <button type="submit" id="submitBtn" class="flex-1 business-bg text-white py-2 rounded-md text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-slate-800 transition-all btn-interactive">Save Entry</button>
                             <button type="button" id="cancelEditBtn" onclick="resetForm()" class="hidden px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md text-xs font-bold uppercase tracking-wider transition-all btn-interactive">Cancel</button>
@@ -244,16 +263,17 @@
                         <table class="w-full text-left border-collapse">
                             <thead>
                                 <tr class="bg-gray-100/70 text-gray-600 text-xs uppercase font-bold tracking-wider border-b border-gray-200">
-                                    <th class="py-3 px-4 w-32">Date</th>
-                                    <th class="py-3 px-4 w-16">SL</th>
-                                    <th class="py-3 px-4 w-32">Job No.</th>
+                                    <th class="py-3 px-4 w-28">Date</th>
+                                    <th class="py-3 px-4 w-12">SL</th>
+                                    <th class="py-3 px-4 w-28">Job No.</th>
                                     <th class="py-3 px-4">Importer</th>
                                     <th class="py-3 px-4">Description</th>
+                                    <th id="thArrivedHeader" class="py-3 px-4 text-center w-36">Shipment Arrived</th>
                                     <th class="py-3 px-4 text-right w-36">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="dataTableBody" class="text-sm text-slate-700 divide-y divide-gray-200">
-                                <tr><td colspan="6" class="text-center py-8 text-gray-400 italic">Connecting to Supabase...</td></tr>
+                                <tr><td colspan="7" class="text-center py-8 text-gray-400 italic">Connecting to Supabase...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -487,6 +507,7 @@
             const formColumn = document.getElementById('formColumn');
             const tableColumn = document.getElementById('tableColumn');
             const workspaceGrid = document.getElementById('workspaceGrid');
+            const adminPanel = document.getElementById('adminFilterPanel');
 
             formColumn.classList.remove('hidden');
             tableColumn.className = "lg:col-span-2";
@@ -497,6 +518,7 @@
                 badge.className = "px-3 py-1 text-xs font-bold rounded bg-slate-100 text-slate-900 uppercase tracking-wider border-white/20";
                 toggleWrapper.classList.add('hidden'); 
                 document.getElementById('archiveFilterPanel').classList.add('hidden');
+                adminPanel.classList.remove('hidden'); // Show persistent admin search panel
                 subtext.innerText = "Showing all historical data in database (Admin Super-View)";
             } else if (currentRole === 'dhaka') {
                 badge.innerText = "Dhaka Team (Read-Only)";
@@ -505,12 +527,14 @@
                 tableColumn.className = "grid-cols-1";
                 workspaceGrid.className = "block";
                 toggleWrapper.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
                 isArchiveActive = false;
                 subtext.innerText = "Showing records stamped with today's date";
             } else {
                 badge.innerText = "User Mode";
                 badge.className = "px-3 py-1 text-xs font-bold rounded bg-slate-700 text-slate-300 border-slate-600 uppercase tracking-wider";
                 toggleWrapper.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
                 isArchiveActive = false;
                 subtext.innerText = "Showing records stamped with today's date";
             }
@@ -519,12 +543,19 @@
             fetchAndRenderTable();
         }
 
+        // --- LOGOUT ROUTINE ---
         function logout() {
             sessionStorage.removeItem('currentRole');
             currentRole = null;
+            document.getElementById('adminFilterPanel').classList.add('hidden');
+            document.getElementById('adminSearchQuery').value = '';
+            document.getElementById('searchQuery').value = '';
+            document.getElementById('filterFromDate').value = '';
+            document.getElementById('filterToDate').value = '';
             document.getElementById('loginScreen').classList.remove('hidden');
         }
 
+        // --- TAB SELECTION LOGIC ---
         function switchTab(tab) {
             currentTab = tab;
             resetForm();
@@ -533,6 +564,8 @@
             const tabLoss = document.getElementById('tab-loss');
             const formTitle = document.getElementById('formTitle');
             const jobInput = document.getElementById('docJob');
+            const checkboxContainer = document.getElementById('originalCheckboxContainer');
+            const thArrived = document.getElementById('thArrivedHeader');
 
             if(tab === 'original') {
                 tabOrig.className = "px-5 py-2 rounded-md text-xs uppercase font-bold tracking-wider transition-all duration-200 bg-white shadow-sm text-slate-900 btn-interactive";
@@ -540,12 +573,16 @@
                 formTitle.innerText = "Add Original Shipping Doc";
                 jobInput.required = true;
                 jobInput.placeholder = "Unique key value for Originals";
+                checkboxContainer.classList.remove('hidden');
+                if (thArrived) thArrived.classList.remove('hidden');
             } else {
                 tabLoss.className = "px-5 py-2 rounded-md text-xs uppercase font-bold tracking-wider transition-all duration-200 bg-white shadow-sm text-slate-900 btn-interactive";
                 tabOrig.className = "px-5 py-2 rounded-md text-xs uppercase font-bold tracking-wider transition-all duration-200 text-gray-600 hover:text-slate-900 btn-interactive";
                 formTitle.innerText = "Add Loss Document";
                 jobInput.required = false;
                 jobInput.placeholder = "Optional (If available)";
+                checkboxContainer.classList.add('hidden');
+                if (thArrived) thArrived.classList.add('hidden');
             }
             fetchAndRenderTable();
         }
@@ -559,6 +596,7 @@
             const job = document.getElementById('docJob').value.trim().toUpperCase();
             const importer = document.getElementById('docImporter').value.trim().toUpperCase();
             const desc = document.getElementById('docDesc').value.trim().toUpperCase();
+            const isShipmentArrived = document.getElementById('docArrived').checked;
             const editId = document.getElementById('editId').value;
 
             const targetTable = currentTab === 'original' ? 'original_docs' : 'loss_docs';
@@ -594,6 +632,11 @@
                 description: desc
             };
 
+            // Save Shipment Arrived dynamic check value into column array 'igm_submitted'
+            if (currentTab === 'original') {
+                payload.igm_submitted = isShipmentArrived;
+            }
+
             try {
                 if (editId === "") {
                     const { error } = await _supabase.from(targetTable).insert([payload]);
@@ -621,7 +664,10 @@
             const targetTable = currentTab === 'original' ? 'original_docs' : 'loss_docs';
             const recordTypeStr = currentTab === 'original' ? "Original Shipping Docs" : "Loss Documents";
 
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-400 italic">Querying secure database arrays...</td></tr>`;
+            // Determine column layout metrics
+            const totalCols = currentTab === 'original' ? 7 : 6;
+
+            tbody.innerHTML = `<tr><td colspan="${totalCols}" class="text-center py-8 text-gray-400 italic">Querying secure database arrays...</td></tr>`;
 
             try {
                 let query = _supabase.from(targetTable).select('*');
@@ -629,6 +675,13 @@
                 if (currentRole === 'admin') {
                     tableTitle.innerText = `All Global ${recordTypeStr}`;
                     subtext.innerText = "Showing all historical data in database (Admin Super-View)";
+                    
+                    // Admin Global Filter Bar Search Mechanics
+                    const adminSearch = document.getElementById('adminSearchQuery').value.trim();
+                    if (adminSearch) {
+                        query = query.or(`job_no.ilike.%${adminSearch}%,importer_name.ilike.%${adminSearch}%,description.ilike.%${adminSearch}%`);
+                    }
+                    
                     query = query.order('date', { ascending: false }).order('created_at', { ascending: false });
                 } else {
                     if (!isArchiveActive) {
@@ -661,7 +714,7 @@
                 countBadge.innerText = `${fetchedTableRecords.length} Found`;
 
                 if (fetchedTableRecords.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-gray-400 italic">No matching records found in database tables.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="${totalCols}" class="text-center py-8 text-gray-400 italic">No matching records found in database tables.</td></tr>`;
                     return;
                 }
 
@@ -670,8 +723,16 @@
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50 transition-colors";
                     
-                    // FIXED: SL now acts strictly as a visual loop row index tracker (1, 2, 3...)
                     const displayedSL = loopIdx + 1;
+
+                    // Load display checkmark from table row field 'igm_submitted'
+                    let dynamicOriginalFieldsHtml = "";
+                    if (currentTab === 'original') {
+                        const arrivedTick = doc.igm_submitted ? "✅" : "";
+                        dynamicOriginalFieldsHtml = `
+                            <td class="py-3 px-4 text-center font-mono text-sm">${arrivedTick}</td>
+                        `;
+                    }
 
                     let actionButtons = `<span class="text-xs text-gray-400 italic">Locked</span>`;
                     if(currentRole === 'admin') {
@@ -689,6 +750,7 @@
                         <td class="py-3 px-4 font-mono text-xs">${doc.job_no ? `<span class="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-900 font-bold uppercase">${doc.job_no}</span>` : '<span class="text-gray-400">N/A</span>'}</td>
                         <td class="py-3 px-4 font-bold text-slate-900 uppercase">${doc.importer_name || '<span class="text-gray-400 font-normal">N/A</span>'}</td>
                         <td class="py-3 px-4 text-gray-500 max-w-xs truncate uppercase" title="${doc.description}">${doc.description}</td>
+                        ${dynamicOriginalFieldsHtml}
                         <td class="py-3 px-4 text-right">${actionButtons}</td>
                     `;
                     tbody.appendChild(tr);
@@ -696,10 +758,11 @@
 
             } catch (err) {
                 console.error("Critical error building system rows layout matrix data elements:", err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 italic">Database tracking engine fetch timeout error. Check console configurations logs.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${totalCols}" class="text-center py-8 text-red-500 italic">Database tracking engine fetch timeout error. Check console configurations logs.</td></tr>`;
             }
         }
 
+        // --- EDIT ACTION ROUTINE ---
         function editDoc(id) {
             if(currentRole !== 'admin') return alert("Access denied.");
             
@@ -712,11 +775,17 @@
             document.getElementById('docImporter').value = data.importer_name || '';
             document.getElementById('docDesc').value = data.description || '';
 
+            // Load data value from row field 'igm_submitted' into checkbox state
+            if (currentTab === 'original') {
+                document.getElementById('docArrived').checked = data.igm_submitted || false;
+            }
+
             document.getElementById('submitBtn').innerText = "Update Record";
             document.getElementById('cancelEditBtn').classList.remove('hidden');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // --- DELETE ACTION ROUTINE ---
         async function deleteDoc(id) {
             if(currentRole !== 'admin') return alert("Access denied.");
             
@@ -735,11 +804,13 @@
             }
         }
 
+        // --- RESET FORM MANEUVER ---
         function resetForm() {
             document.getElementById('docForm').reset();
             document.getElementById('editId').value = "";
             document.getElementById('submitBtn').innerText = "Save Entry";
             document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('docArrived').checked = false;
             closeSuggestionsBox();
             setTodayDate();
         }
